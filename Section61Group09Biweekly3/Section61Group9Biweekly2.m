@@ -101,6 +101,9 @@ function togglebutton2_Callback(hObject, eventdata, handles)
         gxdata = zeros(buf_len,1);
         gydata = zeros(buf_len,1);
         gzdata = zeros(buf_len,1);
+        gxdataFiltered = zeros(buf_len,1);
+        gydataFiltered = zeros(buf_len,1);
+        gzdataFiltered = zeros(buf_len,1);
         gmOldFilter = 0;
         gmNewFilter = 0;
         gxOldFilter = 0;
@@ -124,6 +127,12 @@ function togglebutton2_Callback(hObject, eventdata, handles)
                 alpha = get(handles.slider2,'Value');
             else
                 alpha = 0;
+            end
+            
+            if(get(handles.togglebutton4,'Value'))
+                timePeriod = get(handles.slider3,'Value');
+            else
+                timePeriod = 0;
             end
             %read accelerometer output while the button is pressed down
             
@@ -152,29 +161,38 @@ function togglebutton2_Callback(hObject, eventdata, handles)
             % from wk3_magnitude
             % Append the new reading to the end of the rolling plot data. Drop the
             % first value
+            gxFiltered = gx;
+            gyFiltered = gy;
+            gzFiltered = gz;
             gxdata = [gxdata(2:end) ; gx];
             gydata = [gydata(2:end) ; gy];
             gzdata = [gzdata(2:end) ; gz];    
             gmdata = sqrt(gxdata.^2+gydata.^2+gzdata.^2);
             if(get(handles.togglebutton3,'Value'))
-                gmNewFilter = gmdata*alpha + (1-alpha)*gmOldFilter;
-                gmOldFilter = gmNewFilter;
-                gxNewFilter = gxdata*alpha + (1-alpha)*gxOldFilter;
-                gxOldFilter = gxNewFilter;
-                gyNewFilter = gydata*alpha + (1-alpha)*gyOldFilter;
-                gyOldFilter = gyNewFilter;
-                gzNewFilter = gzdata*alpha + (1-alpha)*gzOldFilter;
-                gzOldFilter = gzNewFilter;
+                  gxFiltered = gxFiltered*alpha + gxdataFiltered(200)*(1-alpha);
+                  gyFiltered = gyFiltered*alpha + gydataFiltered(200)*(1-alpha);
+                  gzFiltered = gzFiltered*alpha + gzdataFiltered(200)*(1-alpha);
+                  gxdataFiltered = [gxdataFiltered(2:end) ; gxFiltered];
+                  gydataFiltered = [gydataFiltered(2:end) ; gyFiltered];
+                  gzdataFiltered = [gzdataFiltered(2:end) ; gzFiltered]; 
+            elseif(get(handles.togglebutton4,'Value'))
+                  gxFiltered = mean(gxdata(end-timePeriod:end),1);
+                  gxdataFiltered = [gxdataFiltered(2:end) ; gxFiltered];
+                  gyFiltered = mean(gydata(end-timePeriod:end),1);
+                  gydataFiltered = [gydataFiltered(2:end) ; gyFiltered];
+                  gzFiltered = mean(gzdata(end-timePeriod:end),1);
+                  gzdataFiltered = [gzdataFiltered(2:end) ; gzFiltered];
+            else
+                  gxdataFiltered = [gxdataFiltered(2:end) ; gx];
+                  gydataFiltered = [gydataFiltered(2:end) ; gy];
+                  gzdataFiltered = [gzdataFiltered(2:end) ; gz]; 
             end
+            
             % Update the rolling plot
 
             % plot for resultant maginitude
             axes(handles.axes1); %selects the axes in GUIDE to plot to
-            if(get(handles.togglebutton3,'Value'))
-                plot(index,gmNewFilter,'black');
-            else
-                plot(index,gmdata,'black');
-            end
+            plot(index,gxdata,'r', index,gydata,'g', index,gzdata,'b');
             axis([1 buf_len -3.5 3.5]);  
             xlabel('time');
             ylabel('Magnitude of the resultant acceleration');
@@ -182,11 +200,8 @@ function togglebutton2_Callback(hObject, eventdata, handles)
             % plot for x y z magnitude
             axes(handles.axes2); %selects the axes in GUIDE to plot to
             
-            if(get(handles.togglebutton3,'Value'))
-                plot(index,gxNewFilter,'r', index,gyNewFilter,'g', index,gzNewFilter,'b');
-            else
-                plot(index,gxdata,'r', index,gydata,'g', index,gzdata,'b');
-            end
+           
+            plot(index,gxdataFiltered,'r', index,gydataFiltered,'g', index,gzdataFiltered,'b');
             axis([1 buf_len -3.5 3.5]);  
             xlabel('time');
             ylabel('Magnitude of individual axes acceleration');
@@ -224,6 +239,9 @@ function togglebutton3_Callback(hObject, eventdata, handles)
         % if the button is being pressed, start reading from the acc.
         guidata(hObject,handles);
         set(hObject,'String','Alpha Filter Off');
+        set(handles.togglebutton4,'String','SMA Filter On');
+        set(handles.togglebutton4,'Value',0);
+        set(handles.text34,'String','Time Period:')
     else
         guidata(hObject,handles);
         set(hObject,'String','Alpha Filter On');
@@ -244,6 +262,48 @@ set(handles.text30,'String',get(hObject,'Value'));
 % --- Executes during object creation, after setting all properties.
 function slider2_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to slider2 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: slider controls usually have a light gray background.
+if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor',[.9 .9 .9]);
+end
+
+
+% --- Executes on button press in togglebutton4.
+function togglebutton4_Callback(hObject, eventdata, handles)
+% hObject    handle to togglebutton4 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of togglebutton4
+    if(get(hObject,'Value'))
+        % if the button is being pressed, start reading from the acc.
+        guidata(hObject,handles);
+        set(hObject,'String','SMA Filter Off');
+        set(handles.togglebutton3,'String','Alpha Filter On');
+        set(handles.togglebutton3,'Value',0);
+        set(handles.text30,'String','Alpha Value:')
+    else
+        guidata(hObject,handles);
+        set(hObject,'String','SMA Filter On');
+        set(handles.text34,'String','Time Period:')
+    end
+
+% --- Executes on slider movement.
+function slider3_Callback(hObject, eventdata, handles)
+% hObject    handle to slider3 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'Value') returns position of slider
+%        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
+set(handles.text34,'String',get(hObject,'Value'));
+
+% --- Executes during object creation, after setting all properties.
+function slider3_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to slider3 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
