@@ -3,13 +3,13 @@
 %Group 9
 
 % This function starts up and initializes GUIDE.
-function varargout = Section61Group9Biweekly2(varargin)
+function varargout = Section61Group9Biweekly3(varargin)
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
 gui_State = struct('gui_Name',       mfilename, ...
                    'gui_Singleton',  gui_Singleton, ...
-                   'gui_OpeningFcn', @Section61Group9Biweekly2_OpeningFcn, ...
-                   'gui_OutputFcn',  @Section61Group9Biweekly2_OutputFcn, ...
+                   'gui_OpeningFcn', @Section61Group9Biweekly3_OpeningFcn, ...
+                   'gui_OutputFcn',  @Section61Group9Biweekly3_OutputFcn, ...
                    'gui_LayoutFcn',  [] , ...
                    'gui_Callback',   []);
 if nargin && ischar(varargin{1})
@@ -23,8 +23,8 @@ else
 end
 
 % This function runs upon starting the GUIDE figure.  
-function Section61Group9Biweekly2_OpeningFcn(hObject, eventdata, handles, varargin)
-    % Choose default command line output for Section61Group9Biweekly2
+function Section61Group9Biweekly3_OpeningFcn(hObject, eventdata, handles, varargin)
+    % Choose default command line output for Section61Group9Biweekly3
     handles.output = hObject;
     % Update handles structure
     guidata(hObject, handles);
@@ -35,7 +35,7 @@ function Section61Group9Biweekly2_OpeningFcn(hObject, eventdata, handles, vararg
     guidata(hObject,handles);
     closeSerial();
     
-function varargout = Section61Group9Biweekly2_OutputFcn(hObject, eventdata, handles) 
+function varargout = Section61Group9Biweekly3_OutputFcn(hObject, eventdata, handles) 
 varargout{1} = handles.output;
 
 %this function run on clicking the open serial communication toggle button
@@ -95,50 +95,41 @@ function togglebutton2_Callback(hObject, eventdata, handles)
         set(hObject,'String','Stop Reading Accelerometer');
         
         %the following code is modified from wk3_vector.m & wk3_magnitude.m
+        %sets the length of the arrays
         buf_len = 200;
         
-        % create variables for all the three axis and the resultant 
+        % create a fixed length empty array for each axis
         gxdata = zeros(buf_len,1);
         gydata = zeros(buf_len,1);
         gzdata = zeros(buf_len,1);
+        % create a fixed length empty array for each axis's filtere data
         gxdataFiltered = zeros(buf_len,1);
         gydataFiltered = zeros(buf_len,1);
         gzdataFiltered = zeros(buf_len,1);
-        gmOldFilter = 0;
-        gmNewFilter = 0;
-        gxOldFilter = 0;
-        gxNewFilter = 0;
-        gyOldFilter = 0;
-        gyNewFilter = 0;
-        gzOldFilter = 0;
-        gzNewFilter = 0;
-
+        %creates an index array of the same fixed length
         index = 1:buf_len;
-
         % Display x and y label ad title.
         xlabel('Time');
         ylabel('Magnitude');
         title('Complete magnitude representation of the accelerometer sensor data');
 
-        
-        
+        %while the button is active,
         while(get(hObject,'Value'))
+            %if the alpha filter is on, set the alpha value
             if(get(handles.togglebutton3,'Value'))
                 alpha = get(handles.slider2,'Value');
             else
                 alpha = 0;
             end
-            
+            %if the SMA filter is on, set the alpha value
             if(get(handles.togglebutton4,'Value'))
-                timePeriod = get(handles.slider3,'Value');
+                timePeriod = round(get(handles.slider3,'Value'));
             else
                 timePeriod = 0;
             end
-            %read accelerometer output while the button is pressed down
-            
             %selects the figure to plot the acceleration vector data to
             axes(handles.axes3);
-            grid on;
+            grid on; %turns on the grid for the graph
             %outputs the acceleration data from the readAcc function
             [gx gy gz] = readAcc(accelerometer, calCo);
             cla;            %clear everything from the current axis
@@ -161,21 +152,31 @@ function togglebutton2_Callback(hObject, eventdata, handles)
             % from wk3_magnitude
             % Append the new reading to the end of the rolling plot data. Drop the
             % first value
-            gxFiltered = gx;
+            
+            % sets the filtered data to start as the actual axis value
+            gxFiltered = gx; 
             gyFiltered = gy;
             gzFiltered = gz;
+            %appends the new data gained on each loop to the arrays
             gxdata = [gxdata(2:end) ; gx];
             gydata = [gydata(2:end) ; gy];
             gzdata = [gzdata(2:end) ; gz];    
             gmdata = sqrt(gxdata.^2+gydata.^2+gzdata.^2);
+            % if the alpha filter is on
             if(get(handles.togglebutton3,'Value'))
+                  %modifies the incoming data with the alpha filter and the
+                  %last value in the respective filtered array
                   gxFiltered = gxFiltered*alpha + gxdataFiltered(200)*(1-alpha);
                   gyFiltered = gyFiltered*alpha + gydataFiltered(200)*(1-alpha);
                   gzFiltered = gzFiltered*alpha + gzdataFiltered(200)*(1-alpha);
+                  %appends filtered value to filtered array
                   gxdataFiltered = [gxdataFiltered(2:end) ; gxFiltered];
                   gydataFiltered = [gydataFiltered(2:end) ; gyFiltered];
                   gzdataFiltered = [gzdataFiltered(2:end) ; gzFiltered]; 
+            % if the sma filter is on
             elseif(get(handles.togglebutton4,'Value'))
+                  %modifies the incoming data with the alpha filter and the
+                  %last n values in the respective filtered array
                   gxFiltered = mean(gxdata(end-timePeriod:end),1);
                   gxdataFiltered = [gxdataFiltered(2:end) ; gxFiltered];
                   gyFiltered = mean(gydata(end-timePeriod:end),1);
@@ -183,13 +184,13 @@ function togglebutton2_Callback(hObject, eventdata, handles)
                   gzFiltered = mean(gzdata(end-timePeriod:end),1);
                   gzdataFiltered = [gzdataFiltered(2:end) ; gzFiltered];
             else
+                  %if no filter is on, append the raw value to the filtered
+                  %array
                   gxdataFiltered = [gxdataFiltered(2:end) ; gx];
                   gydataFiltered = [gydataFiltered(2:end) ; gy];
                   gzdataFiltered = [gzdataFiltered(2:end) ; gz]; 
             end
             
-            % Update the rolling plot
-
             % plot for resultant maginitude
             axes(handles.axes1); %selects the axes in GUIDE to plot to
             plot(index,gxdata,'r', index,gydata,'g', index,gzdata,'b');
